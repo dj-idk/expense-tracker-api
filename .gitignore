@@ -61,6 +61,6 @@ Thumbs.db
 *.todo
 !package.json
 !package-lock.json
-
+!README.md
 # Node Module
 node_modules
