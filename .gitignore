@@ -1,0 +1,66 @@
+# Byte-compiled / cached files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.virtualenv/
+pip-wheel-metadata/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nosetests
+coverage.xml
+*.cover
+*.pycover
+*.pytest_cache/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VS Code settings
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Miscellaneous files
+*.json
+*.md
+*.txt
+*.csv
+*.rst
+*.yml
+*.yaml
+*.xml
+*.cfg
+*.conf
+*.ini
+*.env
+*.todo
+!package.json
+!package-lock.json
+
+# Node Module
+node_modules
