@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from src.data import ExpenseCategory, User
 from src.schema import UserCreate, UserLogin, UserUpdate, UserDisplay
@@ -8,6 +9,8 @@ from src.utils import (
     verify_password,
     seed_categories_for_user,
     Unauthorized,
+    Conflict,
+    InternalServerError,
 )
 
 
@@ -32,9 +35,15 @@ class UserService:
             await seed_categories_for_user(self.db, new_user.id)
 
             return UserDisplay.model_validate(new_user)
-        except Exception as e:
+        except IntegrityError:
             await self.db.rollback()
-            raise e
+            raise Conflict("User with the same credentials already exists.")
+        except SQLAlchemyError:
+            await self.db.rollback()
+            raise InternalServerError()
+        except Exception:
+            await self.db.rollback()
+            raise InternalServerError()
 
     async def authenticate_user(self, login_form: UserLogin):
         try:
@@ -49,5 +58,7 @@ class UserService:
                 return Unauthorized("Invalid Username/Email or Password.")
 
             return UserDisplay.model_validate(user)
-        except Exception as e:
+        except Unauthorized as e:
             raise e
+        except Exception:
+            raise InternalServerError()

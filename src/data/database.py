@@ -1,9 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
-from sqlalchemy.future import select
 
-from .expense import ExpenseCategory
 
 DATABASE_URL = "sqlite+aiosqlite:///./database.db"
 

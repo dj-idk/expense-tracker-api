@@ -1,7 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field, ConfigDict
-from pydantic.types import EmailStr
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:

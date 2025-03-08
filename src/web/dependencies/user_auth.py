@@ -1,4 +1,5 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
+from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
@@ -9,7 +10,8 @@ from src.service import UserService
 from src.schema import UserLogin
 from src.utils import settings
 from src.utils import Unauthorized
-from src.data import get_db, User
+from src.data import User
+from .db_dependecy import db_dependency
 from src.schema import UserDisplay
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -42,7 +44,8 @@ async def generate_token(db: AsyncSession, login_form: UserLogin):
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)
+    db: db_dependency,
+    token: str = Depends(oauth2_scheme),
 ):
     """Retrieves the current user from a JWT token."""
     try:
@@ -51,7 +54,6 @@ async def get_current_user(
         if not username:
             raise Unauthorized("Could not validate credentials")
 
-        # Query user from database
         query = select(User).where(User.username == username)
         result = await db.execute(query)
         user = result.scalars().first()
@@ -63,3 +65,6 @@ async def get_current_user(
 
     except JWTError:
         raise Unauthorized("Invalid token")
+
+
+user_dependency = Annotated[UserDisplay, Depends(get_current_user)]
