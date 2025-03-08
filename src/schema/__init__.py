@@ -1,4 +1,4 @@
-from .user import UserCreate, UserUpdate, UserDisplay
+from .user import UserCreate, UserLogin, UserUpdate, UserDisplay
 from .expense import (
     ExpenseCreate,
     ExpenseUpdate,
@@ -6,10 +6,12 @@ from .expense import (
     ExpenseInDB,
     ExpenseCategoryCreate,
     ExpenseCategoryInDB,
+    ExpenseCategoryDisplay,
 )
 
 __all__ = [
     "UserCreate",
+    "UserLogin",
     "UserUpdate",
     "UserDisplay",
     "ExpenseCreate",
@@ -18,4 +20,5 @@ __all__ = [
     "ExpenseInDB",
     "ExpenseCategoryCreate",
     "ExpenseCategoryInDB",
+    "ExpenseCategoryDisplay",
 ]

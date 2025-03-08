@@ -50,3 +50,9 @@ class ExpenseCategoryInDB(BaseModel):
     expenses: List["ExpenseInDB"] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ExpenseCategoryDisplay(BaseModel):
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
