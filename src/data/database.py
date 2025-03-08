@@ -1,6 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.future import select
+
+from .expense import ExpenseCategory
 
 DATABASE_URL = "sqlite+aiosqlite:///./database.db"
 
@@ -18,10 +21,12 @@ class Base(AsyncAttrs, DeclarativeBase):
 
 
 async def get_db():
+    """Generates an async session"""
     async with AsyncSessionLocal() as session:
         yield session
 
 
 async def init_db():
+    """Initialize database"""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
