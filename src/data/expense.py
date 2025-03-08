@@ -22,15 +22,14 @@ class ExpenseCategory(Base):
     __tablename__ = "expense_categories"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column()
-
+    name: Mapped[str] = mapped_column(nullable=False)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
 
     # Relationship with Expense and User
     expenses: Mapped[List["Expense"]] = relationship(back_populates="category")
-    user: Mapped["User"] = relationship(back_populates="categories")
+    user: Mapped["User"] = relationship(back_populates="expense_categories")
 
 
 class Expense(Base):
@@ -40,20 +39,22 @@ class Expense(Base):
         id (int): Primary key for the expense.
         description (str): Description of the expense.
         amount (float): Amount spent.
-        category_id (int, optional): Foreign key linking the expense to a category.
+        category_id (int): Foreign key linking the expense to a category.
         user_id (int): Foreign key linking the expense to a user.
         user (User): The user who owns this expense.
-        category (ExpenseCategory, optional): The category under which this expense falls.
+        category (ExpenseCategory): The category under which this expense falls.
     """
 
     __tablename__ = "expenses"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    description: Mapped[str]
-    amount: Mapped[float]
+    description: Mapped[str] = mapped_column(nullable=False)
+    amount: Mapped[float] = mapped_column(nullable=False)
 
     category_id: Mapped[int] = mapped_column(
-        ForeignKey("expense_categories.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("expense_categories.id", ondelete="SET NULL"),
+        nullable=False,
+        default=["Others"],
     )
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
