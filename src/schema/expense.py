@@ -12,12 +12,16 @@ class ExpenseCategoryInDB(BaseModel):
     id: int
     name: str
     user_id: int
-    expenses: List["ExpenseInDB"] = []
+    expenses: List["ExpenseDisplay"] = []
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        arbitrary_types_allowed=True,
+    )
 
 
 class ExpenseCategoryDisplay(BaseModel):
+    id: int
     name: str
 
     model_config = ConfigDict(from_attributes=True)

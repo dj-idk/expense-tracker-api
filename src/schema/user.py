@@ -21,10 +21,6 @@ class UserLogin(BaseModel):
     password: str = Field(..., min_length=8)
 
 
-class UserUpdate(BaseModel):
-    username: Optional[str] = Field(None, max_length=100)
-
-
 class UserDisplay(BaseModel):
     id: int
     username: str

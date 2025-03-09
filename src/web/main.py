@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from src.data import init_db, engine
 from .user import router as user_router
+from .expense import router as expense_router
 from src.utils import InternalServerError
 
 
@@ -26,3 +27,4 @@ async def check_health():
 
 
 app.include_router(user_router)
+app.include_router(expense_router)

@@ -4,8 +4,11 @@ from typing import Annotated
 
 from src.schema import UserLogin, UserDisplay, UserCreate
 from src.service import UserService
-from .dependencies.user_dependencies import db_dependency, user_dependency
-from .dependencies.user_dependencies import generate_token, user_dependency
+from .dependencies.user_dependencies import (
+    db_dependency,
+    user_dependency,
+    generate_token,
+)
 
 router = APIRouter(tags=["User Endpoints"])
 

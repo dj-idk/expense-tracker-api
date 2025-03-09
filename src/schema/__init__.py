@@ -1,4 +1,4 @@
-from .user import UserCreate, UserLogin, UserUpdate, UserDisplay
+from .user import UserCreate, UserLogin, UserDisplay
 from .expense import (
     ExpenseCreate,
     ExpenseUpdate,
@@ -20,7 +20,6 @@ ExpenseDisplay.model_rebuild()
 __all__ = [
     "UserCreate",
     "UserLogin",
-    "UserUpdate",
     "UserDisplay",
     "ExpenseCreate",
     "ExpenseUpdate",
