@@ -35,16 +35,22 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
 async def generate_token(session: AsyncSession, login_form: UserLogin) -> dict:
     """Authenticates a user and returns a JWT token if successful."""
+    try:
+        user = await UserService.authenticate_user(session, login_form)
+        if not user:
+            raise Unauthorized("Invalid credentials")
 
-    user = await UserService.authenticate_user(session, login_form)
-    if not user:
-        raise Unauthorized("Invalid credentials")
-    access_token = create_access_token({"sub": user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+        access_token = create_access_token({"sub": user.username})
+        return {"access_token": access_token, "token_type": "bearer"}
+
+    except Unauthorized as e:
+        raise e
+    except Exception as e:
+        raise e
 
 
 async def get_current_user(
-    db: AsyncSession = Depends(get_db),
+    db: db_dependency,
     token: str = Depends(oauth2_scheme),
 ) -> UserDisplay:
     """Retrieves the current user from a JWT token."""
@@ -54,15 +60,13 @@ async def get_current_user(
         if not username:
             raise Unauthorized("Could not validate credentials")
 
-        query = select(User).where(User.username == username)
-        result = await db.execute(query)
-        user = result.scalars().first()
-
+        user = await UserService.read_user_by_username(db, username)
         if not user:
             raise Unauthorized("User not found")
 
         return UserDisplay.model_validate(user)
-
+    except Unauthorized as e:
+        raise e
     except JWTError:
         raise Unauthorized("Invalid token")
 

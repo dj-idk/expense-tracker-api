@@ -59,13 +59,32 @@ class UserService:
                 | (User.email == login_form.username)
             )
             result = await session.execute(query)
-            user = result.scalars().first()
+            user = result.scalar_one_or_none()
 
             if not user or not verify_password(login_form.password, user.password):
-                return Unauthorized("Invalid Username/Email or Password.")
+                return None
 
             return user
-        except Unauthorized as e:
-            raise e
         except Exception as e:
             raise InternalServerError(f"{e}")
+
+    @staticmethod
+    async def read_user_by_username(session: AsyncSession, username: str):
+        try:
+            query = (
+                select(User)
+                .options(joinedload(User.expense_categories), joinedload(User.expenses))
+                .where(User.username == username)
+            )
+            result = await session.execute(query)
+
+            user = result.unique().scalar_one_or_none()
+            if not user:
+                return None
+
+            return user
+
+        except SQLAlchemyError as e:
+            raise InternalServerError(f"An error occurred: {str(e)}")
+        except Exception as e:
+            raise InternalServerError(f"An error occurred: {str(e)}")
