@@ -8,7 +8,7 @@ def run(host: str, port: int, reload: bool):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run the FastAPI application with Uvicorn"
+        "run", description="Run the FastAPI application with Uvicorn"
     )
     parser.add_argument(
         "--host", type=str, default="localhost", help="Host to bind the server to"

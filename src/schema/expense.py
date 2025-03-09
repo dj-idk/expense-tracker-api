@@ -1,9 +1,26 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, List
 
-from typing import Optional, List, TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from .user import UserDisplay
+class ExpenseCategoryCreate(BaseModel):
+    name: str = Field(..., max_length=100)
+
+
+class ExpenseCategoryInDB(BaseModel):
+    id: int
+    name: str
+    user_id: int
+    expenses: List["ExpenseInDB"] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExpenseCategoryDisplay(BaseModel):
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ExpenseCreate(BaseModel):
@@ -24,7 +41,6 @@ class ExpenseInDB(BaseModel):
     amount: float
     category_id: int
     user_id: int
-    user: "UserDisplay"
     category: "ExpenseCategoryInDB"
 
     model_config = ConfigDict(from_attributes=True)
@@ -34,25 +50,6 @@ class ExpenseDisplay(BaseModel):
     id: int
     description: str
     amount: float
-    category: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class ExpenseCategoryCreate(BaseModel):
-    name: str = Field(..., max_length=100)
-
-
-class ExpenseCategoryInDB(BaseModel):
-    id: int
-    name: str
-    user_id: int
-    expenses: List["ExpenseInDB"] = []
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class ExpenseCategoryDisplay(BaseModel):
-    name: str
+    category: "ExpenseCategoryDisplay"
 
     model_config = ConfigDict(from_attributes=True)

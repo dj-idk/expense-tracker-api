@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 from datetime import datetime
+
 
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .expense import ExpenseCategoryDisplay
+    from .expense import ExpenseCategoryDisplay, ExpenseDisplay
 
 
 class UserCreate(BaseModel):
@@ -14,7 +17,7 @@ class UserCreate(BaseModel):
 
 
 class UserLogin(BaseModel):
-    username_or_email: str = Field(..., max_length=100)
+    username: str = Field(..., max_length=100)
     password: str = Field(..., min_length=8)
 
 
@@ -30,6 +33,9 @@ class UserDisplay(BaseModel):
     email: EmailStr
     created_at: datetime
     updated_at: datetime
-    expense_categories: List["ExpenseCategoryDisplay"] = []
+    expense_categories: Optional[List["ExpenseCategoryDisplay"]] = []
+    expenses: Optional[List["ExpenseDisplay"]]
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+    )

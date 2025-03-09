@@ -9,6 +9,14 @@ from .expense import (
     ExpenseCategoryDisplay,
 )
 
+
+UserDisplay.model_rebuild()
+ExpenseCategoryInDB.model_rebuild()
+ExpenseCategoryDisplay.model_rebuild()
+ExpenseInDB.model_rebuild()
+ExpenseDisplay.model_rebuild()
+
+
 __all__ = [
     "UserCreate",
     "UserLogin",

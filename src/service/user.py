@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -17,48 +18,54 @@ from src.utils import (
 class UserService:
     """A class for managing user services"""
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
-
-    async def register_user(self, register_form: UserCreate):
+    @staticmethod
+    async def register_user(session: AsyncSession, register_form: UserCreate):
         """Registers a new user"""
         try:
+            password_hash = hash_password(register_form.password)
             new_user = User(
                 username=register_form.username,
                 email=register_form.email,
-                password=hash_password(register_form),
+                password=password_hash,
             )
-            self.db.add(new_user)
-            await self.db.commit()
-            await self.db.refresh(new_user)
+            session.add(new_user)
+            await session.commit()
+            await session.refresh(new_user)
+            await seed_categories_for_user(session, new_user.id)
+            query = (
+                select(User)
+                .options(joinedload(User.expense_categories), joinedload(User.expenses))
+                .filter(User.id == new_user.id)
+            )
+            result = await session.execute(query)
+            user_with_relations = result.scalars().first()
 
-            await seed_categories_for_user(self.db, new_user.id)
-
-            return UserDisplay.model_validate(new_user)
+            return UserDisplay.model_validate(user_with_relations)
         except IntegrityError:
-            await self.db.rollback()
+            await session.rollback()
             raise Conflict("User with the same credentials already exists.")
-        except SQLAlchemyError:
-            await self.db.rollback()
-            raise InternalServerError()
-        except Exception:
-            await self.db.rollback()
-            raise InternalServerError()
+        except SQLAlchemyError as e:
+            await session.rollback()
+            raise InternalServerError(f"{e}")
+        except Exception as e:
+            await session.rollback()
+            raise InternalServerError(f"{e}")
 
-    async def authenticate_user(self, login_form: UserLogin):
+    @staticmethod
+    async def authenticate_user(session: AsyncSession, login_form: UserLogin):
         try:
             query = select(User).where(
-                (User.username == login_form.username_or_email)
-                | (User.email == login_form.username_or_email)
+                (User.username == login_form.username)
+                | (User.email == login_form.username)
             )
-            result = await self.db.execute(query)
+            result = await session.execute(query)
             user = result.scalars().first()
 
             if not user or not verify_password(login_form.password, user.password):
                 return Unauthorized("Invalid Username/Email or Password.")
 
-            return UserDisplay.model_validate(user)
+            return user
         except Unauthorized as e:
             raise e
-        except Exception:
-            raise InternalServerError()
+        except Exception as e:
+            raise InternalServerError(f"{e}")

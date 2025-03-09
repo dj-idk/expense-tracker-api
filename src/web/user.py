@@ -1,26 +1,27 @@
-from fastapi import APIRouter, HTTPException
-
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import OAuth2PasswordRequestForm
+from typing import Annotated
 
 from src.schema import UserLogin, UserDisplay, UserCreate
 from src.service import UserService
-from .dependencies.db_dependecy import db_dependency
-from .dependencies.user_auth import generate_token, user_dependency
+from .dependencies.user_dependencies import db_dependency, user_dependency
+from .dependencies.user_dependencies import generate_token, user_dependency
 
 router = APIRouter(tags=["User Endpoints"])
 
-user_service = UserService(db_dependency)
-
 
 @router.post("/register", response_model=UserDisplay)
-async def register(register_form: UserCreate):
+async def register(register_form: UserCreate, db: db_dependency):
     try:
-        return await user_service.register_user(register_form)
+        return await UserService.register_user(db, register_form)
     except HTTPException as e:
         raise e
 
 
 @router.post("/token", response_model=dict)
-async def login(login_form: UserLogin, db: db_dependency):
+async def login(
+    db: db_dependency, login_form: Annotated[OAuth2PasswordRequestForm, Depends()]
+):
     try:
         return await generate_token(db, login_form)
     except HTTPException as e:
