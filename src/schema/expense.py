@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 
@@ -55,5 +57,7 @@ class ExpenseDisplay(BaseModel):
     description: str
     amount: float
     category: "ExpenseCategoryDisplay"
+    created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

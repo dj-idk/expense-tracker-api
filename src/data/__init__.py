@@ -1,6 +1,6 @@
 from .user import User
 from .expense import Expense, ExpenseCategory
-from .database import init_db, get_db, engine
+from .database import init_db, get_db, engine, AsyncSessionLocal
 
 __all__ = [
     "User",
@@ -9,4 +9,5 @@ __all__ = [
     "init_db",
     "get_db",
     "engine",
+    "AsyncSessionLocal",
 ]

@@ -11,10 +11,8 @@ from src.schema import UserLogin, UserDisplay
 from src.utils import settings, Unauthorized
 from src.data import User, get_db
 
-# Dependency for database session
 db_dependency = Annotated[AsyncSession, Depends(get_db)]
 
-# OAuth2 scheme for authentication
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # Security settings
@@ -71,5 +69,4 @@ async def get_current_user(
         raise Unauthorized("Invalid token")
 
 
-# Current user dependency
 user_dependency = Annotated[UserDisplay, Depends(get_current_user)]

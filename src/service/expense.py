@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -299,7 +301,7 @@ class ExpenseService:
             total_amount = sum((expense.amount for expense in filtered_result.expenses))
 
             summary = {
-                "expenses_count": expenses_count,
+                "total_count": expenses_count,
                 "total_amount": total_amount,
             }
 
@@ -314,3 +316,48 @@ class ExpenseService:
             raise InternalServerError(f"{e}")
         except Exception as e:
             raise InternalServerError(f"{e}")
+
+    @staticmethod
+    async def filter_expenses_by_last_weeks(
+        session: AsyncSession,
+        user_id: int,
+        weeks: int = 1,
+    ):
+        if weeks <= 0:
+            weeks = 1
+
+        try:
+            cutoff_date = datetime.now(timezone.utc) - timedelta(weeks=weeks)
+
+            query = (
+                select(Expense)
+                .where(
+                    and_(
+                        Expense.created_at >= cutoff_date,
+                        Expense.user_id == user_id,
+                    )
+                )
+                .options(joinedload(Expense.category))
+            )
+
+            result = await session.execute(query)
+            expenses = result.scalars().all()
+            filtered_expenses = [
+                ExpenseDisplay.model_validate(expense) for expense in expenses
+            ]
+
+            expenses_count = len(expenses)
+            total_amount = sum((expense.amount for expense in expenses))
+
+            summary = {
+                "total_count": expenses_count,
+                "total_amount": total_amount,
+            }
+
+            return {
+                "summary": summary,
+                "result": filtered_expenses,
+            }
+
+        except SQLAlchemyError as e:
+            raise InternalServerError(f"Database error: {e}")

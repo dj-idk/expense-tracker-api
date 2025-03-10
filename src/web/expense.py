@@ -64,6 +64,18 @@ async def search_expenses_with_definition(
         raise e
 
 
+@router.get("/weekly/{weeks}")
+async def filter_expenses_by_last_weeks(
+    db: db_dependency,
+    user: user_dependency,
+    weeks: int = 1,
+):
+    try:
+        return await ExpenseService.filter_expenses_by_last_weeks(db, user.id, weeks)
+    except HTTPException as e:
+        raise e
+
+
 @router.post("/category")
 async def create_expense_category(
     db: db_dependency,
