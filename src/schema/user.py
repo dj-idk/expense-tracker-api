@@ -11,14 +11,14 @@ if TYPE_CHECKING:
 
 
 class UserCreate(BaseModel):
-    username: str = Field(..., max_length=100)
-    email: EmailStr = Field(..., max_length=200)
-    password: str = Field(..., min_length=8)
+    username: str = Field(..., min_length=5, max_length=100)
+    email: EmailStr = Field(...)
+    password: str = Field(..., min_length=8, max_length=40)
 
 
 class UserLogin(BaseModel):
-    username: str = Field(..., max_length=100)
-    password: str = Field(..., min_length=8)
+    username: str = Field(..., min_length=5, max_length=100)
+    password: str = Field(..., min_length=8, max_length=40)
 
 
 class UserDisplay(BaseModel):
