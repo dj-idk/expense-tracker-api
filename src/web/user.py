@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 
-from src.schema import UserLogin, UserDisplay, UserCreate
+from src.schema import UserDisplay, UserCreate
 from src.service import UserService
 from .dependencies.user_dependencies import (
     db_dependency,
@@ -13,7 +13,9 @@ from .dependencies.user_dependencies import (
 router = APIRouter(tags=["User Endpoints"])
 
 
-@router.post("/register", response_model=UserDisplay)
+@router.post(
+    "/register", response_model=UserDisplay, status_code=status.HTTP_201_CREATED
+)
 async def register(register_form: UserCreate, db: db_dependency):
     try:
         return await UserService.register_user(db, register_form)
@@ -21,7 +23,7 @@ async def register(register_form: UserCreate, db: db_dependency):
         raise e
 
 
-@router.post("/token", response_model=dict)
+@router.post("/token", response_model=dict, status_code=status.HTTP_201_CREATED)
 async def login(
     db: db_dependency, login_form: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):

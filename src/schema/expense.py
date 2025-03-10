@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Union
 
 
 class ExpenseCategoryCreate(BaseModel):
@@ -61,3 +61,33 @@ class ExpenseDisplay(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class FilterSummary(BaseModel):
+    total_count: int
+    total_amount: float
+
+
+class FilteredExpenses(BaseModel):
+    summary: FilterSummary
+    result: Union[ExpenseDisplay, List[ExpenseDisplay]]
+
+
+class FilteredExpenseCategory(BaseModel):
+    summary: FilterSummary
+    result: "ExpenseCategoryInDB"
+
+
+class Pagination(BaseModel):
+    total: int
+    limit: int
+    skip: int
+    current_page: int
+    total_pages: int
+    has_previous: bool
+    has_next: bool
+
+
+class ExpenseListResponse(BaseModel):
+    expenses: List[ExpenseDisplay]
+    pagination: Pagination

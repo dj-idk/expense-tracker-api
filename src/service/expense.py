@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.future import select
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -10,9 +10,7 @@ from src.data import User, Expense, ExpenseCategory
 from src.schema import (
     ExpenseCreate,
     ExpenseUpdate,
-    ExpenseDisplay,
     ExpenseCategoryDisplay,
-    ExpenseCategoryInDB,
 )
 from src.utils import (
     Unauthorized,
@@ -44,12 +42,16 @@ class ExpenseService:
             session.add(new_expense)
             await session.commit()
             await session.refresh(new_expense)
+            query = (
+                select(Expense)
+                .options(selectinload(Expense.category))
+                .filter(Expense.id == new_expense.id)
+            )
+            result = await session.execute(query)
+            expense_with_relations = result.scalars().first()
 
-            return new_expense
+            return expense_with_relations
         except SQLAlchemyError as e:
-            await session.rollback()
-            raise InternalServerError(f"{e}")
-        except Exception as e:
             await session.rollback()
             raise InternalServerError(f"{e}")
 
@@ -58,8 +60,10 @@ class ExpenseService:
         session: AsyncSession, update_form: ExpenseUpdate, user_id: int, expense_id: int
     ):
         try:
-            query = select(Expense).where(
-                and_(Expense.id == expense_id, Expense.user_id == user_id)
+            query = (
+                select(Expense)
+                .where(and_(Expense.id == expense_id, Expense.user_id == user_id))
+                .options(selectinload(Expense.category))
             )
             result = await session.execute(query)
             expense = result.scalar_one_or_none()
@@ -80,39 +84,27 @@ class ExpenseService:
             await session.refresh(expense)
 
             return expense
-        except NotFound as e:
-            raise e
+
         except SQLAlchemyError as e:
-            await session.rollback()
-            raise InternalServerError(f"{e}")
-        except Exception as e:
             await session.rollback()
             raise InternalServerError(f"{e}")
 
     @staticmethod
     async def delete_expense(session: AsyncSession, user_id: int, expense_id: int):
+        """Deletes an expense if it exists, otherwise raises a NotFound error."""
         try:
-            query = select(Expense).where(
-                and_(Expense.id == expense_id, Expense.user_id == user_id)
+            expense = await session.get(
+                Expense, expense_id, options=[selectinload(Expense.user)]
             )
-            result = await session.execute(query)
 
-            expense = result.scalar_one_or_none()
-            if not expense:
-                raise NotFound(f"Expense {expense_id} was not found.")
+            if not expense or expense.user_id != user_id:
+                raise NotFound(f"Expense {expense_id} not found or unauthorized.")
 
             await session.delete(expense)
             await session.commit()
-
-            return {"message": f"Expense {expense_id} was deleted successfully."}
-        except NotFound as e:
-            raise e
         except SQLAlchemyError as e:
             await session.rollback()
-            raise InternalServerError(f"{e}")
-        except Exception as e:
-            await session.rollback()
-            raise InternalServerError(f"{e}")
+            raise InternalServerError(f"Database error: {str(e)}") from e
 
     @staticmethod
     async def search_expenses_by_description(
@@ -128,21 +120,16 @@ class ExpenseService:
             result = await session.execute(query)
             expenses = result.unique().scalars().all()
 
-            expense_responses = [
-                ExpenseDisplay.model_validate(expense) for expense in expenses
-            ]
-
-            return expense_responses
-        except Exception as e:
-            raise InternalServerError(f"{e}")
+            return expenses
+        except SQLAlchemyError as e:
+            await session.rollback()
+            raise InternalServerError(f"Database error: {str(e)}") from e
 
     @staticmethod
     async def get_all_expenses(
         session: AsyncSession, user_id: int, limit: int = 10, skip: int = 0
     ):
         try:
-            if limit > 100:
-                limit = 100
 
             total = await session.scalar(func.count(Expense.id))
 
@@ -151,17 +138,13 @@ class ExpenseService:
 
             query = (
                 select(Expense)
-                .options(joinedload(Expense.category))
+                .options(selectinload(Expense.category))
                 .offset(skip)
                 .limit(limit)
                 .where(Expense.user_id == user_id)
             )
             result = await session.execute(query)
-            expenses = result.unique().scalars().all()
-
-            expense_responses = [
-                ExpenseDisplay.model_validate(expense) for expense in expenses
-            ]
+            expenses = result.scalars().all()
 
             pagination = {
                 "total": total,
@@ -173,10 +156,88 @@ class ExpenseService:
                 "has_next": current_page < total_pages,
             }
 
-            return {"expenses": expense_responses, "pagination": pagination}
+            return {"expenses": expenses, "pagination": pagination}
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             raise InternalServerError(f"{e}")
+
+    @staticmethod
+    async def filter_expenses_by_category(
+        session: AsyncSession,
+        user_id: int,
+        category: str,
+    ):
+        try:
+            query = (
+                select(ExpenseCategory)
+                .where(
+                    and_(
+                        ExpenseCategory.user_id == user_id,
+                        ExpenseCategory.name.ilike(f"%{category}%"),
+                    )
+                )
+                .options(selectinload(ExpenseCategory.expenses))
+            )
+            result = await session.execute(query)
+            filtered_result = result.unique().scalar_one_or_none()
+            if not filtered_result:
+                raise NotFound(f"Category {category} was not found.")
+
+            expenses_count = len(filtered_result.expenses)
+            total_amount = sum((expense.amount for expense in filtered_result.expenses))
+
+            summary = {
+                "total_count": expenses_count,
+                "total_amount": total_amount,
+            }
+
+            return {
+                "result": filtered_result,
+                "summary": summary,
+            }
+
+        except SQLAlchemyError as e:
+            raise InternalServerError(f"{e}")
+
+    @staticmethod
+    async def filter_expenses_by_last_weeks(
+        session: AsyncSession,
+        user_id: int,
+        weeks: int = 1,
+    ):
+
+        try:
+            cutoff_date = datetime.now(timezone.utc) - timedelta(weeks=weeks)
+
+            query = (
+                select(Expense)
+                .where(
+                    and_(
+                        Expense.created_at >= cutoff_date,
+                        Expense.user_id == user_id,
+                    )
+                )
+                .options(selectinload(Expense.category))
+            )
+
+            result = await session.execute(query)
+            expenses = result.scalars().all()
+
+            expenses_count = len(expenses)
+            total_amount = sum((expense.amount for expense in expenses))
+
+            summary = {
+                "total_count": expenses_count,
+                "total_amount": total_amount,
+            }
+
+            return {
+                "summary": summary,
+                "result": expenses,
+            }
+
+        except SQLAlchemyError as e:
+            raise InternalServerError(f"Database error: {e}")
 
     @staticmethod
     async def create_category_if_none(session: AsyncSession, name: str, user_id: int):
@@ -191,8 +252,7 @@ class ExpenseService:
                 await session.commit()
                 await session.refresh(category)
             return category
-        except Exception as e:
-            await session.rollback()
+        except SQLAlchemyError as e:
             raise InternalServerError(f"{e}")
 
     @staticmethod
@@ -219,9 +279,8 @@ class ExpenseService:
             await session.commit()
             await session.refresh(category)
 
-            return ExpenseCategoryDisplay.model_validate(category)
-        except Exception as e:
-            await session.rollback()
+            return category
+        except SQLAlchemyError as e:
             raise InternalServerError(f"{e}")
 
     @staticmethod
@@ -246,13 +305,7 @@ class ExpenseService:
             await session.delete(category)
             await session.commit()
 
-            return {"message": f"Expense {category_id} was deleted successfully."}
-        except NotFound as e:
-            raise e
         except SQLAlchemyError as e:
-            await session.rollback()
-            raise InternalServerError(f"{e}")
-        except Exception as e:
             await session.rollback()
             raise InternalServerError(f"{e}")
 
@@ -266,98 +319,7 @@ class ExpenseService:
             result = await session.execute(query)
 
             categories = result.scalars().all()
-            category_responses = [
-                ExpenseCategoryDisplay.model_validate(category)
-                for category in categories
-            ]
 
-            return category_responses
-        except Exception as e:
-            raise InternalServerError(f"{e}")
-
-    @staticmethod
-    async def filter_expenses_by_category(
-        session: AsyncSession,
-        user_id: int,
-        category: str,
-    ):
-        try:
-            query = (
-                select(ExpenseCategory)
-                .where(
-                    and_(
-                        ExpenseCategory.user_id == user_id,
-                        ExpenseCategory.name.ilike(f"%{category}%"),
-                    )
-                )
-                .options(joinedload(ExpenseCategory.expenses))
-            )
-            result = await session.execute(query)
-            filtered_result = result.unique().scalar_one_or_none()
-            if not filtered_result:
-                raise NotFound(f"Category {category} was not found.")
-
-            expenses_count = len(filtered_result.expenses)
-            total_amount = sum((expense.amount for expense in filtered_result.expenses))
-
-            summary = {
-                "total_count": expenses_count,
-                "total_amount": total_amount,
-            }
-
-            return {
-                "result": ExpenseCategoryInDB.model_validate(filtered_result),
-                "summary": summary,
-            }
-
-        except NotFound as e:
-            raise e
+            return categories
         except SQLAlchemyError as e:
             raise InternalServerError(f"{e}")
-        except Exception as e:
-            raise InternalServerError(f"{e}")
-
-    @staticmethod
-    async def filter_expenses_by_last_weeks(
-        session: AsyncSession,
-        user_id: int,
-        weeks: int = 1,
-    ):
-        if weeks <= 0:
-            weeks = 1
-
-        try:
-            cutoff_date = datetime.now(timezone.utc) - timedelta(weeks=weeks)
-
-            query = (
-                select(Expense)
-                .where(
-                    and_(
-                        Expense.created_at >= cutoff_date,
-                        Expense.user_id == user_id,
-                    )
-                )
-                .options(joinedload(Expense.category))
-            )
-
-            result = await session.execute(query)
-            expenses = result.scalars().all()
-            filtered_expenses = [
-                ExpenseDisplay.model_validate(expense) for expense in expenses
-            ]
-
-            expenses_count = len(expenses)
-            total_amount = sum((expense.amount for expense in expenses))
-
-            summary = {
-                "total_count": expenses_count,
-                "total_amount": total_amount,
-            }
-
-            return {
-                "summary": summary,
-                "result": filtered_expenses,
-            }
-
-        except SQLAlchemyError as e:
-            raise InternalServerError(f"Database error: {e}")

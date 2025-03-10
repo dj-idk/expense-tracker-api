@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -37,13 +37,13 @@ class UserService:
             await seed_categories_for_user(session, new_user.id)
             query = (
                 select(User)
-                .options(joinedload(User.expense_categories), joinedload(User.expenses))
+                .options(selectinload(User.expense_categories))
                 .filter(User.id == new_user.id)
             )
             result = await session.execute(query)
             user_with_relations = result.scalars().first()
 
-            return UserDisplay.model_validate(user_with_relations)
+            return user_with_relations
         except IntegrityError:
             await session.rollback()
             raise Conflict("User with the same credentials already exists.")
@@ -76,7 +76,7 @@ class UserService:
         try:
             query = (
                 select(User)
-                .options(joinedload(User.expense_categories), joinedload(User.expenses))
+                .options(selectinload(User.expense_categories))
                 .where(User.username == username)
             )
             result = await session.execute(query)

@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .expense import ExpenseCategoryDisplay, ExpenseDisplay
+    from .expense import ExpenseCategoryDisplay
 
 
 class UserCreate(BaseModel):
@@ -28,7 +28,6 @@ class UserDisplay(BaseModel):
     created_at: datetime
     updated_at: datetime
     expense_categories: Optional[List["ExpenseCategoryDisplay"]] = []
-    expenses: Optional[List["ExpenseDisplay"]]
 
     model_config = ConfigDict(
         from_attributes=True,

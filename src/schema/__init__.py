@@ -7,6 +7,9 @@ from .expense import (
     ExpenseCategoryCreate,
     ExpenseCategoryInDB,
     ExpenseCategoryDisplay,
+    ExpenseListResponse,
+    FilteredExpenses,
+    FilteredExpenseCategory,
 )
 
 
@@ -15,7 +18,6 @@ ExpenseCategoryInDB.model_rebuild()
 ExpenseCategoryDisplay.model_rebuild()
 ExpenseInDB.model_rebuild()
 ExpenseDisplay.model_rebuild()
-
 
 __all__ = [
     "UserCreate",
@@ -28,4 +30,7 @@ __all__ = [
     "ExpenseCategoryCreate",
     "ExpenseCategoryInDB",
     "ExpenseCategoryDisplay",
+    "ExpenseListResponse",
+    "FilteredExpenses",
+    "FilteredExpenseCategory",
 ]
