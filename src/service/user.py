@@ -37,8 +37,8 @@ class UserService:
             await seed_categories_for_user(session, new_user.id)
             query = (
                 select(User)
+                .where(User.id == new_user.id)
                 .options(selectinload(User.expense_categories))
-                .filter(User.id == new_user.id)
             )
             result = await session.execute(query)
             user_with_relations = result.scalars().first()
@@ -76,8 +76,8 @@ class UserService:
         try:
             query = (
                 select(User)
-                .options(selectinload(User.expense_categories))
                 .where(User.username == username)
+                .options(selectinload(User.expense_categories))
             )
             result = await session.execute(query)
 

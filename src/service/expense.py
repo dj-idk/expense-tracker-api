@@ -10,7 +10,6 @@ from src.data import User, Expense, ExpenseCategory
 from src.schema import (
     ExpenseCreate,
     ExpenseUpdate,
-    ExpenseCategoryDisplay,
 )
 from src.utils import (
     Unauthorized,
@@ -23,8 +22,7 @@ class ExpenseService:
     @staticmethod
     async def add_expense(session: AsyncSession, expense: ExpenseCreate, user_id: int):
         try:
-            user = await session.execute(select(User).filter_by(id=user_id))
-            user = user.scalars().first()
+            user = await session.get(User, user_id)
             if not user:
                 raise Unauthorized("Invalid User Credentials.")
 
@@ -42,13 +40,9 @@ class ExpenseService:
             session.add(new_expense)
             await session.commit()
             await session.refresh(new_expense)
-            query = (
-                select(Expense)
-                .options(selectinload(Expense.category))
-                .filter(Expense.id == new_expense.id)
+            expense_with_relations = await session.get(
+                Expense, new_expense.id, options=[selectinload(Expense.category)]
             )
-            result = await session.execute(query)
-            expense_with_relations = result.scalars().first()
 
             return expense_with_relations
         except SQLAlchemyError as e:
@@ -75,7 +69,8 @@ class ExpenseService:
                 category = await ExpenseService.create_category_if_none(
                     session, update_data["category"], user_id
                 )
-                update_data["category"] = category
+                update_data["category_id"] = category.id
+                del update_data["category"]
 
             for key, value in update_data.items():
                 setattr(expense, key, value)
@@ -91,11 +86,8 @@ class ExpenseService:
 
     @staticmethod
     async def delete_expense(session: AsyncSession, user_id: int, expense_id: int):
-        """Deletes an expense if it exists, otherwise raises a NotFound error."""
         try:
-            expense = await session.get(
-                Expense, expense_id, options=[selectinload(Expense.user)]
-            )
+            expense = await session.get(Expense, expense_id)
 
             if not expense or expense.user_id != user_id:
                 raise NotFound(f"Expense {expense_id} not found or unauthorized.")
@@ -113,12 +105,12 @@ class ExpenseService:
         try:
             query = (
                 select(Expense)
+                .filter(Expense.description.ilike(f"%{description}%"))
                 .options(joinedload(Expense.category))
                 .where(Expense.user_id == user_id)
-                .filter(Expense.description.ilike(f"%{description}%"))
             )
             result = await session.execute(query)
-            expenses = result.unique().scalars().all()
+            expenses = result.scalars().all()
 
             return expenses
         except SQLAlchemyError as e:
@@ -138,10 +130,10 @@ class ExpenseService:
 
             query = (
                 select(Expense)
-                .options(selectinload(Expense.category))
+                .where(Expense.user_id == user_id)
+                .options(joinedload(Expense.category))
                 .offset(skip)
                 .limit(limit)
-                .where(Expense.user_id == user_id)
             )
             result = await session.execute(query)
             expenses = result.scalars().all()
@@ -217,7 +209,7 @@ class ExpenseService:
                         Expense.user_id == user_id,
                     )
                 )
-                .options(selectinload(Expense.category))
+                .options(joinedload(Expense.category))
             )
 
             result = await session.execute(query)

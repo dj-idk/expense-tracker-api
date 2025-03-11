@@ -63,7 +63,7 @@ async def read_all_expenses(
 
 
 @router.get("/search", response_model=List[ExpenseDisplay])
-async def search_expenses_with_definition(
+async def search_expenses_with_description(
     db: db_dependency,
     user: user_dependency,
     description: str = Query(None, max_length=50),
