@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, String, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from typing import List, TYPE_CHECKING
@@ -9,6 +9,29 @@ from .database import Base
 
 if TYPE_CHECKING:
     from .expense import Expense, ExpenseCategory
+
+
+class AccessToken(Base):
+    """Database model for user access tokens.
+
+    Attributes:
+        id (str)
+        user_id (int)
+        created_at (datetime)
+        is_revoked (bool)
+        user (User)
+
+    """
+
+    __tablename__ = "access_tokens"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=timezone.utc), server_default=func.now(), nullable=False
+    )
+    is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    user: Mapped["User"] = relationship("User", back_populates="tokens", lazy="joined")
 
 
 class User(Base):
@@ -40,10 +63,12 @@ class User(Base):
         onupdate=func.now(),
     )
 
-    # Relatuonship with Expense and ExpenseCategory
     expenses: Mapped[List["Expense"]] = relationship(
         back_populates="user", cascade="all, delete"
     )
     expense_categories: Mapped[List["ExpenseCategory"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
+        back_populates="user", cascade="all, delete-orphan", lazy="selectin"
+    )
+    tokens = relationship(
+        "AccessToken", back_populates="user", cascade="all, delete-orphan"
     )
